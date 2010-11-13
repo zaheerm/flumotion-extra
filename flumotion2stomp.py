@@ -147,7 +147,7 @@ class FluToStomp:
             elif k == 'messages':
                 messages = []
                 for m in state.get('messages'):
-                    messages.append({"id": m.mid,
+                    messages.append({"mid": getattr(m, "id"),
                                      "text":self._translator.translate(m),
                                      "description":m.getDescription(),
                                      "timestamp":m.getTimeStamp(),

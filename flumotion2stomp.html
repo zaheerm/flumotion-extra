@@ -12,7 +12,7 @@
 
  <script type="text/javascript" src="json2.js"></script>
  <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
-
+ <script type="text/javascript" src="jquery.expander.js"></script>
  <script type="text/javascript">
 
  var POLL_CHANNEL = '/flumotion/poll';
@@ -66,14 +66,15 @@
    else if (value["type"].indexOf("muxer") != -1) section = "encoders";
    else if (value["type"].indexOf("disk-consumer") != -1) section = "diskers";
    else if (value["type"].indexOf("pipeline-converter") != -1) section = "encoders";
-
-   var elementname = "component-" + value["name"].replace(/\./g, "__");
+   var componentname = value["name"].replace(/\./g, "__");
+   var elementname = "component-" + componentname;
    $("#" + section).append('<div id="' + elementname + '" class="' + mood + '">' + value["name"] + '</div>');
    change_overall_mood();
    if (value["messages"].length > 0) {
      for(i=0;i<value["messages"].length;i++) {
-       m = value["messages"][i]
-       $('#messages').append('<div id="message-' + m["mid"] + '">' + m["text"] + " on component <b>" + value["name"] + "</b></div>");
+       m = value["messages"][i];
+       $('#messages').append('<div class="flumotion-message" id="message-' + componentname + '">On component <b>' + value["name"] + "</b>:" + m["text"] + "</div>");
+       $('div.flumotion-message').expander();
      }
    }
    if (value["type"].indexOf("http-") != -1 || value["type"] == 'disk-consumer') {
@@ -88,7 +89,7 @@
      var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/volume-peak';
      stomp.subscribe(channel_name);
      stomp.send(value["name"], POLL_CHANNEL);
-     $('#summary').append('<canvas id="volumeleft-' + value["name"] + '" width="250" height="30"></canvas><canvas id="volumeright-' + value["name"] + '" width="250" height="30"></canvas>')
+     $('#input').append('<canvas id="volumeleft-' + value["name"] + '" width="250" height="30"></canvas><canvas id="volumeright-' + value["name"] + '" width="250" height="30"></canvas>')
      ctx = document.getElementById('volumeleft-' + value['name']).getContext("2d");
      ctx.fillStyle = '#000';
      ctx.fillRect(0, 0, 250, 30);
@@ -119,10 +120,12 @@
    }
    else if (msg["action"] == "remove") {
      console.log("component " + value + " removed");
-     var elementname = "#component-" + value.replace(/\./g, "__");
+     var componentname = value.replace(/\./g, "__");
+     var elementname = "#component-" + componentname;
      var c = $(elementname);
      console.log($(elementname).attr('id') + " being removed");
      $(elementname).fadeOut(500, function() { $(elementname).remove(); change_overall_mood(); });
+     $("#message-" + componentname).remove();
    }
  }
 
@@ -189,7 +192,7 @@ function update_streamer_clients() {
   for (i in STREAMER_CLIENTS) {
     total_clients = total_clients + STREAMER_CLIENTS[i];
   }
-  $('#listeners').html(total_clients);
+  $('#listeners').html("Total clients: " + total_clients);
 }
  $(document).ready(function() {
    // set up stomp client.
@@ -223,7 +226,6 @@ function update_streamer_clients() {
  <style>
   #summary {position:absolute;left:20px;top:0px;}
   #components {position:absolute;right:20px;top:0px;}
-  #messages {position:absolute;left:20px;bottom:0px;top:500px;right:300px;}
   .happy:before {content:url('images/mood-happy.png')}
   .hungry:before {content:url('images/mood-hungry.png')}
   .sleeping:before {content:url('images/mood-sleeping.png')}
@@ -236,8 +238,18 @@ function update_streamer_clients() {
 <body>
 <div id="summary">
 <h2>Summary</h2>
-<div id="recordingsummary"></div>
-<div>Total listeners/watchers <div id="listeners"></div></div>
+<div id="recordingsummary">
+<h3>Recordings</h3></div>
+<div id="streamingsummary">
+<h3>Streaming</h3>
+<div id="listeners"></div>
+</div>
+<div id="input">
+<h3>Input</h3>
+</div>
+<div id="messages">
+<h2>Messages</h2>
+</div>
 </div>
 <span id="components">
 <h3>Producers</h3>
@@ -251,9 +263,6 @@ function update_streamer_clients() {
 <h3>Miscellaneous</h3>
 <div id="misc"></div>
 </span>
-<div id="messages">
-<h2>Messages</h2>
-</div>
 </body>
 
 </html>
