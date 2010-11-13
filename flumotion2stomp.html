@@ -20,6 +20,7 @@
  var CHANGES_CHANNEL = '/flumotion/components/changes';
  var UISTATE_CHANNEL = '/flumotion/components/uistate';
  var OVERALL_MOOD = -1;
+ var STREAMER_CLIENTS = Array();
  var stomp = new STOMPClient();
 
  function initial_receive( msg ) {
@@ -105,12 +106,31 @@ function uistate_receive(destination, value) {
 
   if (destsplit[5] == "filename") {
     console.log("component " + destsplit[4] + " has changed filename to " + value);
+    var str = destsplit[4];
+    if (value == null) str = str + " is not recording";
+    else str = str + ' is recording to filename ' + value;
+    if ($("#filename-" + destsplit[4]).length == 0) {
+      $("#recordingsummary").append('<div id="filename-' + destsplit[4] + '">' + str + '</div>');
+    }
+    else {
+      $("#filename-" + destsplit[4]).html(str);
+    }
+      
   }
   else {
+    STREAMER_CLIENTS[destsplit[4]] = parseInt(value);
+    update_streamer_clients();
     console.log("component " + destsplit[4] + " has clients " + value);
   }
 }
 
+function update_streamer_clients() {
+  var total_clients = 0;
+  for (i in STREAMER_CLIENTS) {
+    total_clients = total_clients + STREAMER_CLIENTS[i];
+  }
+  $('#listeners').html(total_clients);
+}
  $(document).ready(function() {
    // set up stomp client.
    stomp.onconnectedframe = function() {
@@ -152,13 +172,15 @@ function uistate_receive(destination, value) {
 
 <body>
 <h2>Flumotion</h2>
+<div id="recordingsummary"></div>
+<div>Total listeners/watchers <div id="listeners"></div></div>
 <span id="components">
 <div id="producers"><h3>Producers</h3></div>
 <div id="encoders"><h3>Encoders and Muxers</h3></div>
 <div id="streamers"><h3>Streamers</h3></div>
 <div id="diskers"><h3>Recording</h3></div>
 <div id="misc"><h3>Miscellaneous</h3></div>
-</span> 
+</span>
 </body>
 
 </html>
