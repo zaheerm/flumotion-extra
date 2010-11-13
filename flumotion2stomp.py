@@ -96,9 +96,6 @@ class FluToStomp:
         d.addErrback(lambda x: reactor.stop())
         d.addCallback(self.manager_connected)
 
-        self.stomp_client = StompClient()
-        reactor.connectTCP("localhost", int(options.stomp), self.stomp_client)
-
     @defer.inlineCallbacks
     def manager_connected(self, model):
         try:
@@ -113,6 +110,9 @@ class FluToStomp:
                   flow = f
                   break
             self._components = flow.get('components')
+            self.stomp_client = StompClient()
+            reactor.connectTCP("localhost", int(self.options.stomp), self.stomp_client)
+
             flow.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
             for c in self._components:
                 c.addListener(self, set_=self.component_state_set)
@@ -163,11 +163,14 @@ class FluToStomp:
 
     def component_state_set(self, state, key, value):
         component = self.parse_component(state)
+        print "component changed %r" % (component,)
         self.stomp_client.send_changes({ "action": "change", "component": component })
 
     def flow_state_append(self, state, key, value):
         if key == 'components':
            component = self.parse_component(value)
+           value.addListener(self, set_=self.component_state_set)
+
            self.stomp_client.send_changes({ "action": "add", "component": component })
 
     def flow_state_remove(self, state, key, value):
@@ -182,7 +185,7 @@ class StompClient(StompClientFactory):
         #self.subscribe("/flumotion/changes")
         #print "Subscribed"
         self.timer = LoopingCall(self.send_status)
-        self.timer.start(15)
+        self.timer.start(5)
         
     def recv_message(self, msg):
         print "Message received %r" % (msg['body'],)

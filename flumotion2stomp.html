@@ -17,6 +17,7 @@
 
  var INITIAL_CHANNEL = '/flumotion/components/initial';
  var CHANGES_CHANNEL = '/flumotion/components/changes';
+ var OVERALL_MOOD = -1;
 
  function initial_receive( msg ) {
  console.log('received initial message', msg);
@@ -25,15 +26,41 @@
  });
  }
 
- function add_component( value ) {
+ function change_overall_mood() {
    var mood = "happy";
-   if (value["mood"] == 0) mood = "happy";
-   else if (value["mood"] == 1) mood = "hungry";
-   else if (value["mood"] == 2) mood = "waking";
-   else if (value["mood"] == 3) mood = "sleeping";
-   else if (value["mood"] == 4) mood = "lost";
-   else if (value["mood"] == 5) mood = "sad";
-   $("#components").append('<div id="component-' + value["name"] + '" class="' + mood + '">' + value["name"] + '</div>');
+   if ($('div.hungry').length > 0) mood = "hungry";
+   if ($('div.waking').length > 0) mood = "waking";
+   if ($('div.sleeping').length > 0) mood = "sleeping";
+   if ($('div.lost').length > 0) mood = "lost";
+   if ($('div.sad').length > 0) mood = "sad";
+
+   $("#components").attr('class', mood);
+ }
+
+ function get_mood_string(mood) {
+   var smood = "happy";
+   if (mood == 0) smood = "happy";
+   else if (mood == 1) smood = "hungry";
+   else if (mood == 2) smood = "waking";
+   else if (mood == 3) smood = "sleeping";
+   else if (mood == 4) smood = "lost";
+   else if (mood == 5) smood = "sad";
+   return smood;
+ }
+ function add_component( value ) {
+   mood = get_mood_string(value["mood"]);
+ 
+   var section = "misc";
+   if (value["type"].indexOf("http-") != -1) section = "streamers";
+   else if (value["type"].indexOf("producer") != -1) section = "producers";
+   else if (value["type"].indexOf("encoder") != -1) section = "encoders";
+   else if (value["type"].indexOf("muxer") != -1) section = "encoders";
+   else if (value["type"].indexOf("disk-consumer") != -1) section = "diskers";
+   else if (value["type"].indexOf("pipeline-converter") != -1) section = "encoders";
+
+   var elementname = "component-" + value["name"].replace(/\./g, "__");
+   $("#" + section).append('<div id="' + elementname + '" class="' + mood + '">' + value["name"] + '</div>');
+   change_overall_mood();
  };
  function changes_receive ( msg ) {
    console.log('received changes message', msg);
@@ -41,15 +68,13 @@
 
    if (msg["action"] == "change") {
      console.log("change to component " + value["name"]);
-     var mood = "happy";
-     if (value["mood"] == 0) mood = "happy";
-     else if (value["mood"] == 1) mood = "hungry";
-     else if (value["mood"] == 2) mood = "waking";
-     else if (value["mood"] == 3) mood = "sleeping";
-     else if (value["mood"] == 4) mood = "lost";
-     else if (value["mood"] == 5) mood = "sad";
+     if (value["mood"] > OVERALL_MOOD) change_overall_mood(value["mood"]);
+     var mood = get_mood_string(value["mood"]);
      console.log("mood changed to " + mood);
-     $("#component-" + value["name"]).attr("class", mood);
+     var elementname = "#component-" + value["name"].replace(/\./g, "__");
+     console.log("element " + $(elementname).attr("id"))
+     $(elementname).attr("class", mood);
+     change_overall_mood();
    }
    else if (msg["action"] == "add") {
      console.log("new component " + value["name"]);
@@ -57,8 +82,10 @@
    }
    else if (msg["action"] == "remove") {
      console.log("component " + value + " removed");
-     var component = $("#component-" + value);
-     component.fadeOut(500, function() { $(this).remove(); });
+     var elementname = "#component-" + value.replace(/\./g, "__");
+     var c = $(elementname);
+     console.log($(elementname).attr('id') + " being removed");
+     $(elementname).fadeOut(500, function() { $(elementname).remove(); change_overall_mood(); });
    }
  }
 
@@ -101,7 +128,13 @@
 
 <body>
 <h2>Flumotion</h2>
-<div id="components"></div>
+<span id="components">
+<div id="producers"><h3>Producers</h3></div>
+<div id="encoders"><h3>Encoders and Muxers</h3></div>
+<div id="streamers"><h3>Streamers</h3></div>
+<div id="diskers"><h3>Recording</h3></div>
+<div id="misc"><h3>Miscellaneous</h3></div>
+</span> 
 </body>
 
 </html>
