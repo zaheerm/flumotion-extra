@@ -40,12 +40,16 @@ from flumotion.monitor.nagios import util
 from zope.interface import implements
 import optparse
 
+# register the unjellyable
+from flumotion.common import componentui
+
 class FluToStomp:
 
     implements(flavors.IStateListener)
 
     def __init__(self, args):
         self._components = []
+        self.uistates = {}
         log.init()
 
         parser = optparse.OptionParser()
@@ -78,7 +82,7 @@ class FluToStomp:
         self.options = options
         connection = connections.parsePBConnectionInfo(options.manager,
                                                        not options.no_ssl)
-        model = AdminModel()
+        self.model = model = AdminModel()
         d = model.connectToManager(connection)
 
         def failed(failure):
@@ -102,7 +106,7 @@ class FluToStomp:
             psd = model.callRemote('getPlanetState')
             yield psd
             planet = psd.result
-            print planet
+            self.planet = planet
             flows = planet.get('flows')
             flow = flows[0]
             for f in flows:
@@ -115,7 +119,7 @@ class FluToStomp:
 
             flow.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
             for c in self._components:
-                c.addListener(self, set_=self.component_state_set)
+                self.new_component(c)
             
         except Exception, e:
             print log.getExceptionMessage(e)
@@ -128,7 +132,6 @@ class FluToStomp:
         sys.exit(exitval)
 
     def components(self):
-        print "..."
         l = []
         for c in self._components:
             keys = c.keys()
@@ -144,7 +147,6 @@ class FluToStomp:
                 else:
                     d[k] = c.get(k)
             l.append(d)
-        print "zzz"
         return l
 
     def parse_component(self, state):
@@ -169,7 +171,7 @@ class FluToStomp:
     def flow_state_append(self, state, key, value):
         if key == 'components':
            component = self.parse_component(value)
-           value.addListener(self, set_=self.component_state_set)
+           self.new_component(value)
 
            self.stomp_client.send_changes({ "action": "add", "component": component })
 
@@ -177,24 +179,71 @@ class FluToStomp:
         if key == 'components':
            component = value.get('name')
            self.stomp_client.send_changes({ "action": "remove", "component": component }) 
-            
+    
+    def new_component(self, state):
+        state.addListener(self, set_= self.component_state_set)
+
+    @defer.inlineCallbacks
+    def poll_uistate(self, component):
+        state = None
+        for c in self._components:
+            if c.get('name') == component:
+               state = c
+               break
+        if not state:
+           defer.returnValue(False)
+        d = self.model.componentCallRemote(state, "getUIState")
+        try:
+           yield d
+           uistate = d.result
+           self.uistates[uistate] = state.get('name')
+           parsed = self.parse_uistate(uistate)
+           for key in parsed:
+               self.stomp_client.send_uistate(state.get('name'), key, parsed[key])
+           uistate.addListener(self, set_ = self.uistate_set)
+        except Exception, e:
+           print "got error %r getting uistate from component %r" % (e,state)
+
+    def uistate_set(self, state, key, value):
+        component = self.uistates[state]
+        data = value
+        if hasattr(value, "append"):
+            data = []
+            for item in value:
+                data.append(self.parse_uistate(value))
+        self.stomp_client.send_uistate(component, key, data)
+
+    def parse_uistate(self, state):
+        component = {}
+        for k in state.keys():
+            if k == 'parent':
+                continue
+            elif k == 'feeders' or k == 'eaters' or k == 'clients':
+                component[k] = []
+                for e in state.get(k):
+                    component[k].append(self.parse_uistate(e))
+            else:
+                component[k] = state.get(k)
+        return component
+
+ 
 class StompClient(StompClientFactory):
     status = {}
     def recv_connected(self, msg):
         print "Connected with stomp"
-        #self.subscribe("/flumotion/changes")
-        #print "Subscribed"
         self.timer = LoopingCall(self.send_status)
         self.timer.start(5)
+        self.subscribe("/flumotion/poll")
         
     def recv_message(self, msg):
-        print "Message received %r" % (msg['body'],)
-        message = {}
+        print "Message received %r" % (msg,)
         try:
-            message = json.decode(msg['body'])
+            component = msg["body"]
+            global main
+            main.poll_uistate(component)
+
         except Exception, e:
             print "Broken Total Request %r" % (e,)
-            return
 
     def send_status(self):
         global main
@@ -202,6 +251,14 @@ class StompClient(StompClientFactory):
 
     def send_changes(self, changes):
         self.send("/flumotion/components/changes", json.encode(changes))
+
+    def send_uistate(self, component, key, value):
+        try:
+           encoded = json.encode(value)
+           self.send("/flumotion/components/uistate/%s/%s" % (component, key), encoded)
+           print "uistate component %r key %r" % (component, key)
+        except Exception, e:
+           print "Error %r with uistate %r" % (e, value)
 
 main = FluToStomp(sys.argv)
 reactor.run()

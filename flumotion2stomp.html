@@ -15,9 +15,12 @@
  <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
  <script type="text/javascript">
 
+ var POLL_CHANNEL = '/flumotion/poll';
  var INITIAL_CHANNEL = '/flumotion/components/initial';
  var CHANGES_CHANNEL = '/flumotion/components/changes';
+ var UISTATE_CHANNEL = '/flumotion/components/uistate';
  var OVERALL_MOOD = -1;
+ var stomp = new STOMPClient();
 
  function initial_receive( msg ) {
  console.log('received initial message', msg);
@@ -61,6 +64,14 @@
    var elementname = "component-" + value["name"].replace(/\./g, "__");
    $("#" + section).append('<div id="' + elementname + '" class="' + mood + '">' + value["name"] + '</div>');
    change_overall_mood();
+   if (value["type"].indexOf("http-") != -1 || value["type"] == 'disk-consumer') {
+      var channel_name = UISTATE_CHANNEL + "/" + value["name"];
+      if (value["type"] == "disk-consumer") channel_name = channel_name + "/filename";
+      else channel_name = channel_name + "/clients-current";
+      console.log("subscribing to " + channel_name);
+      stomp.subscribe(channel_name);
+      stomp.send(value["name"], POLL_CHANNEL);
+   }
  };
  function changes_receive ( msg ) {
    console.log('received changes message', msg);
@@ -89,9 +100,19 @@
    }
  }
 
+function uistate_receive(destination, value) {
+  destsplit = destination.split('/');
+
+  if (destsplit[5] == "filename") {
+    console.log("component " + destsplit[4] + " has changed filename to " + value);
+  }
+  else {
+    console.log("component " + destsplit[4] + " has clients " + value);
+  }
+}
+
  $(document).ready(function() {
    // set up stomp client.
-   stomp = new STOMPClient();
    stomp.onconnectedframe = function() {
      // Run on initial connection to STOMP (comet) server
      stomp.ready = true;
@@ -109,6 +130,9 @@
      }
      else if (frame.headers['destination'] == '/flumotion/components/changes') {
        changes_receive ( JSON.parse(frame.body) );
+     }
+     else if (frame.headers['destination'].indexOf('/flumotion/components/uistate') != -1) {
+       uistate_receive(frame.headers['destination'], JSON.parse(frame.body) );
      }
    };
 
