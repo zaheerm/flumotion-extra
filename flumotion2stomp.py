@@ -32,6 +32,7 @@ from twisted.internet import reactor, defer
 from twisted.internet.task import LoopingCall
 from flumotion.twisted import pb, flavors
 from flumotion.common import log, errors
+from flumotion.common.i18n import Translator
 from flumotion.common.planet import moods
 from flumotion.admin import connections
 from flumotion.admin.command import utils
@@ -50,6 +51,7 @@ class FluToStomp:
     def __init__(self, args):
         self._components = []
         self.uistates = {}
+        self._translator = Translator()
         log.init()
 
         parser = optparse.OptionParser()
@@ -134,19 +136,7 @@ class FluToStomp:
     def components(self):
         l = []
         for c in self._components:
-            keys = c.keys()
-            d = {}
-            for k in keys:
-                if k == 'parent':
-                    continue
-                elif k == 'messages':
-                    messages = []
-                    for m in c.get('messages'):
-                        messages.append(str(m))
-                    d['messages'] = messages
-                else:
-                    d[k] = c.get(k)
-            l.append(d)
+            l.append(self.parse_component(c))
         return l
 
     def parse_component(self, state):
@@ -157,7 +147,13 @@ class FluToStomp:
             elif k == 'messages':
                 messages = []
                 for m in state.get('messages'):
-                    messages.append(str(m))
+                    messages.append({"id": m.mid,
+                                     "text":self._translator.translate(m),
+                                     "description":m.getDescription(),
+                                     "timestamp":m.getTimeStamp(),
+                                     "debug":m.debug,
+                                     "level":m.level,
+                                     "priority":m.priority})
                 component['messages'] = messages
             else:
                 component[k] = state.get(k)
@@ -249,7 +245,8 @@ class StompClient(StompClientFactory):
 
     def send_status(self):
         global main
-        self.send("/flumotion/components/initial", json.encode(main.components()))
+        data = json.encode(main.components())
+        self.send("/flumotion/components/initial", data)
 
     def send_changes(self, changes):
         self.send("/flumotion/components/changes", json.encode(changes))
@@ -258,7 +255,6 @@ class StompClient(StompClientFactory):
         try:
            encoded = json.encode(value)
            self.send("/flumotion/components/uistate/%s/%s" % (component, key), encoded)
-           print "uistate component %r key %r value %r" % (component, key, value)
         except Exception, e:
            print "Error %r with uistate %r" % (e, value)
 

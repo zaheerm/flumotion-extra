@@ -70,6 +70,12 @@
    var elementname = "component-" + value["name"].replace(/\./g, "__");
    $("#" + section).append('<div id="' + elementname + '" class="' + mood + '">' + value["name"] + '</div>');
    change_overall_mood();
+   if (value["messages"].length > 0) {
+     for(i=0;i<value["messages"].length;i++) {
+       m = value["messages"][i]
+       $('#messages').append('<div id="message-' + m["mid"] + '">' + m["text"] + " on component <b>" + value["name"] + "</b></div>");
+     }
+   }
    if (value["type"].indexOf("http-") != -1 || value["type"] == 'disk-consumer') {
       var channel_name = UISTATE_CHANNEL + "/" + value["name"];
       if (value["type"] == "disk-consumer") channel_name = channel_name + "/filename";
@@ -78,7 +84,7 @@
       stomp.subscribe(channel_name);
       stomp.send(value["name"], POLL_CHANNEL);
    }
-   if (value["type"] == "firewire-producer") {
+   if (value["type"] == "firewire-producer" || value["type"] == "soundcard-producer") {
      var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/volume-peak';
      stomp.subscribe(channel_name);
      stomp.send(value["name"], POLL_CHANNEL);
@@ -91,7 +97,8 @@
      ctx.fillRect(0, 0, 250, 30);
 
    }
- };
+ }
+
  function changes_receive ( msg ) {
    console.log('received changes message', msg);
    var value = msg["component"]
@@ -195,7 +202,7 @@ function update_streamer_clients() {
 
    stomp.onmessageframe = function(frame) {
      // Executed when a messge is received
-     console.log('frame is', frame);
+     //console.log('frame is', frame);
      if (frame.headers["destination"] == "/flumotion/components/initial") {
        initial_receive( JSON.parse(frame.body) );
        stomp.unsubscribe(INITIAL_CHANNEL);
@@ -216,6 +223,7 @@ function update_streamer_clients() {
  <style>
   #summary {position:absolute;left:20px;top:0px;}
   #components {position:absolute;right:20px;top:0px;}
+  #messages {position:absolute;left:20px;bottom:0px;top:500px;right:300px;}
   .happy:before {content:url('images/mood-happy.png')}
   .hungry:before {content:url('images/mood-hungry.png')}
   .sleeping:before {content:url('images/mood-sleeping.png')}
@@ -243,6 +251,9 @@ function update_streamer_clients() {
 <h3>Miscellaneous</h3>
 <div id="misc"></div>
 </span>
+<div id="messages">
+<h2>Messages</h2>
+</div>
 </body>
 
 </html>
