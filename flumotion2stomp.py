@@ -200,7 +200,7 @@ class FluToStomp:
            parsed = self.parse_uistate(uistate)
            for key in parsed:
                self.stomp_client.send_uistate(state.get('name'), key, parsed[key])
-           uistate.addListener(self, set_ = self.uistate_set)
+           uistate.addListener(self, set_ = self.uistate_set, append=self.uistate_set)
         except Exception, e:
            print "got error %r getting uistate from component %r" % (e,state)
 
@@ -210,11 +210,13 @@ class FluToStomp:
         if hasattr(value, "append"):
             data = []
             for item in value:
-                data.append(self.parse_uistate(value))
+                data.append(self.parse_uistate(item))
         self.stomp_client.send_uistate(component, key, data)
 
     def parse_uistate(self, state):
         component = {}
+        if not hasattr(state, 'keys'):
+            return state
         for k in state.keys():
             if k == 'parent':
                 continue
@@ -256,7 +258,7 @@ class StompClient(StompClientFactory):
         try:
            encoded = json.encode(value)
            self.send("/flumotion/components/uistate/%s/%s" % (component, key), encoded)
-           print "uistate component %r key %r" % (component, key)
+           print "uistate component %r key %r value %r" % (component, key, value)
         except Exception, e:
            print "Error %r with uistate %r" % (e, value)
 

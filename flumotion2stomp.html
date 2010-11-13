@@ -11,8 +11,8 @@
  <script type="text/javascript" src="http://localhost:8000/static/protocols/stomp/stomp.js"></script>
 
  <script type="text/javascript" src="json2.js"></script>
+<script type="text/javascript" src="jquery-1.4.4.min.js"></script>
 
- <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
  <script type="text/javascript">
 
  var POLL_CHANNEL = '/flumotion/poll';
@@ -20,8 +20,13 @@
  var CHANGES_CHANNEL = '/flumotion/components/changes';
  var UISTATE_CHANNEL = '/flumotion/components/uistate';
  var OVERALL_MOOD = -1;
+ 
  var STREAMER_CLIENTS = Array();
  var stomp = new STOMPClient();
+ var GREEN = "#0f0";
+ var RED = "#f00";
+ var YELLOW = "#ff0";
+ var ORANGE = "#f80";
 
  function initial_receive( msg ) {
  console.log('received initial message', msg);
@@ -73,6 +78,19 @@
       stomp.subscribe(channel_name);
       stomp.send(value["name"], POLL_CHANNEL);
    }
+   if (value["type"] == "firewire-producer") {
+     var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/volume-peak';
+     stomp.subscribe(channel_name);
+     stomp.send(value["name"], POLL_CHANNEL);
+     $('#summary').append('<canvas id="volumeleft-' + value["name"] + '" width="250" height="30"></canvas><canvas id="volumeright-' + value["name"] + '" width="250" height="30"></canvas>')
+     ctx = document.getElementById('volumeleft-' + value['name']).getContext("2d");
+     ctx.fillStyle = '#000';
+     ctx.fillRect(0, 0, 250, 30);
+     ctx = document.getElementById('volumeright-' + value['name']).getContext("2d");
+     ctx.fillStyle = '#000';
+     ctx.fillRect(0, 0, 250, 30);
+
+   }
  };
  function changes_receive ( msg ) {
    console.log('received changes message', msg);
@@ -117,13 +135,48 @@ function uistate_receive(destination, value) {
     }
       
   }
-  else {
+  else if (destsplit[5] == 'clients-current') {
     STREAMER_CLIENTS[destsplit[4]] = parseInt(value);
     update_streamer_clients();
     console.log("component " + destsplit[4] + " has clients " + value);
   }
+  else if (destsplit[5].indexOf('volume-') != -1) {
+    draw_volume(destsplit[4], value);
+  }
 }
 
+function iec_scale(db) {
+  var pct = 0.0
+
+  if (db < -70.0) pct = 0.0;
+  else if (db < -60.0) pct = (db + 70.0) * 0.25;
+  else if (db < -50.0) pct = (db + 60.0) * 0.5 + 2.5;
+  else if (db < -40.0) pct = (db + 50.0) * 0.75 + 7.5;
+  else if (db < -30.0) pct = (db + 40.0) * 1.5 + 15.0;
+  else if (db < -20.0) pct = (db + 30.0) * 2.0 + 30.0;
+  else if (db < 0.0)   pct = (db + 20.0) * 2.5 + 50.0
+  else pct = 100.0;
+  return pct;
+}
+function draw_volume(component, peaks) {
+  for(i=0;i<=1;i++) {
+    var channel = "left";
+    if (i == 1)
+      channel = "right";
+    ctx = document.getElementById('volume' + channel + '-' + component).getContext("2d");
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 250, 30);
+    peaklevelpct = iec_scale(peaks[i]);
+    peakwidth = 250.0 * peaklevelpct/100.0;
+    orangethreshold = -10.0;
+    redthreshold = -1.0;
+    ctx.fillStyle = GREEN;
+    if (peaks[i] >= orangethreshold) ctx.fillStyle = ORANGE;
+    if (peaks[i] >= redthreshold) ctx.fillStyle = RED;
+    if (peakwidth > 0) ctx.fillRect(0, 0, peakwidth, 30);
+  }
+}
+  
 function update_streamer_clients() {
   var total_clients = 0;
   for (i in STREAMER_CLIENTS) {
@@ -132,6 +185,7 @@ function update_streamer_clients() {
   $('#listeners').html(total_clients);
 }
  $(document).ready(function() {
+
    // set up stomp client.
    stomp.onconnectedframe = function() {
      // Run on initial connection to STOMP (comet) server
@@ -172,14 +226,21 @@ function update_streamer_clients() {
 
 <body>
 <h2>Flumotion</h2>
+<div id="summary">
 <div id="recordingsummary"></div>
 <div>Total listeners/watchers <div id="listeners"></div></div>
+</div>
 <span id="components">
-<div id="producers"><h3>Producers</h3></div>
-<div id="encoders"><h3>Encoders and Muxers</h3></div>
-<div id="streamers"><h3>Streamers</h3></div>
-<div id="diskers"><h3>Recording</h3></div>
-<div id="misc"><h3>Miscellaneous</h3></div>
+<h3>Producers</h3>
+<div id="producers"></div>
+<h3>Encoders and Muxers</h3>
+<div id="encoders"></div>
+<h3>Streamers</h3>
+<div id="streamers"></div>
+<h3>Recording</h3>
+<div id="diskers"></div>
+<h3>Miscellaneous</h3>
+<div id="misc"></div>
 </span>
 </body>
 
