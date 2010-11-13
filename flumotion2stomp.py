@@ -30,17 +30,20 @@ from orbited import json
 from flumotion.component import feed
 from twisted.internet import reactor, defer
 from twisted.internet.task import LoopingCall
-from flumotion.twisted import pb
+from flumotion.twisted import pb, flavors
 from flumotion.common import log, errors
 from flumotion.common.planet import moods
 from flumotion.admin import connections
 from flumotion.admin.command import utils
 from flumotion.admin.admin import AdminModel
 from flumotion.monitor.nagios import util
-
+from zope.interface import implements
 import optparse
 
 class FluToStomp:
+
+    implements(flavors.IStateListener)
+
     def __init__(self, args):
         self._components = []
         log.init()
@@ -93,7 +96,8 @@ class FluToStomp:
         d.addErrback(lambda x: reactor.stop())
         d.addCallback(self.manager_connected)
 
-        reactor.connectTCP("localhost", int(options.stomp), StompClient())
+        self.stomp_client = StompClient()
+        reactor.connectTCP("localhost", int(options.stomp), self.stomp_client)
 
     @defer.inlineCallbacks
     def manager_connected(self, model):
@@ -103,10 +107,16 @@ class FluToStomp:
             planet = psd.result
             print planet
             flows = planet.get('flows')
-            self._components = flows[0].get('components')
+            flow = flows[0]
+            for f in flows:
+               if f.get('name') == 'default':
+                  flow = f
+                  break
+            self._components = flow.get('components')
+            flow.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
             for c in self._components:
-                print "%s: %s" % (c.get('name'),moods.get(c.get('mood')).name)
-            print json.encode(self.components())
+                c.addListener(self, set_=self.component_state_set)
+            
         except Exception, e:
             print log.getExceptionMessage(e)
 
@@ -137,6 +147,34 @@ class FluToStomp:
         print "zzz"
         return l
 
+    def parse_component(self, state):
+        component = {}
+        for k in state.keys():
+            if k == 'parent':
+                continue
+            elif k == 'messages':
+                messages = []
+                for m in state.get('messages'):
+                    messages.append(str(m))
+                component['messages'] = messages
+            else:
+                component[k] = state.get(k)
+        return component
+
+    def component_state_set(self, state, key, value):
+        component = self.parse_component(state)
+        self.stomp_client.send_changes({ "action": "change", "component": component })
+
+    def flow_state_append(self, state, key, value):
+        if key == 'components':
+           component = self.parse_component(value)
+           self.stomp_client.send_changes({ "action": "add", "component": component })
+
+    def flow_state_remove(self, state, key, value):
+        if key == 'components':
+           component = value.get('name')
+           self.stomp_client.send_changes({ "action": "remove", "component": component }) 
+            
 class StompClient(StompClientFactory):
     status = {}
     def recv_connected(self, msg):
@@ -157,7 +195,10 @@ class StompClient(StompClientFactory):
 
     def send_status(self):
         global main
-        self.send("/flumotion/components", json.encode(main.components()))
+        self.send("/flumotion/components/initial", json.encode(main.components()))
+
+    def send_changes(self, changes):
+        self.send("/flumotion/components/changes", json.encode(changes))
 
 main = FluToStomp(sys.argv)
 reactor.run()

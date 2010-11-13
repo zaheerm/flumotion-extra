@@ -1,0 +1,107 @@
+<!doctype html>
+ <html>
+
+<head>
+ <script>document.domain=document.domain</script>
+ <script type="text/javascript" src="http://localhost:8000/static/Orbited.js"></script>
+ <script>
+ Orbited.settings.port = 8000;
+ TCPSocket = Orbited.TCPSocket;
+ </script>
+ <script type="text/javascript" src="http://localhost:8000/static/protocols/stomp/stomp.js"></script>
+
+ <script type="text/javascript" src="json2.js"></script>
+
+ <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
+ <script type="text/javascript">
+
+ var INITIAL_CHANNEL = '/flumotion/components/initial';
+ var CHANGES_CHANNEL = '/flumotion/components/changes';
+
+ function initial_receive( msg ) {
+ console.log('received initial message', msg);
+ $.each(msg, function(index,value) {
+   add_component (value);
+ });
+ }
+
+ function add_component( value ) {
+   var mood = "happy";
+   if (value["mood"] == 0) mood = "happy";
+   else if (value["mood"] == 1) mood = "hungry";
+   else if (value["mood"] == 2) mood = "waking";
+   else if (value["mood"] == 3) mood = "sleeping";
+   else if (value["mood"] == 4) mood = "lost";
+   else if (value["mood"] == 5) mood = "sad";
+   $("#components").append('<div id="component-' + value["name"] + '" class="' + mood + '">' + value["name"] + '</div>');
+ };
+ function changes_receive ( msg ) {
+   console.log('received changes message', msg);
+   var value = msg["component"]
+
+   if (msg["action"] == "change") {
+     console.log("change to component " + value["name"]);
+     var mood = "happy";
+     if (value["mood"] == 0) mood = "happy";
+     else if (value["mood"] == 1) mood = "hungry";
+     else if (value["mood"] == 2) mood = "waking";
+     else if (value["mood"] == 3) mood = "sleeping";
+     else if (value["mood"] == 4) mood = "lost";
+     else if (value["mood"] == 5) mood = "sad";
+     console.log("mood changed to " + mood);
+     $("#component-" + value["name"]).attr("class", mood);
+   }
+   else if (msg["action"] == "add") {
+     console.log("new component " + value["name"]);
+     add_component(value);
+   }
+   else if (msg["action"] == "remove") {
+     console.log("component " + value + " removed");
+     var component = $("#component-" + value);
+     component.fadeOut(500, function() { $(this).remove(); });
+   }
+ }
+
+ $(document).ready(function() {
+   // set up stomp client.
+   stomp = new STOMPClient();
+   stomp.onconnectedframe = function() {
+     // Run on initial connection to STOMP (comet) server
+     stomp.ready = true;
+     // subscribe to channel CHANNEL = "/ezchat/"
+     stomp.subscribe(INITIAL_CHANNEL);
+   };
+
+   stomp.onmessageframe = function(frame) {
+     // Executed when a messge is received
+     console.log('frame is', frame);
+     if (frame.headers["destination"] == "/flumotion/components/initial") {
+       initial_receive( JSON.parse(frame.body) );
+       stomp.unsubscribe(INITIAL_CHANNEL);
+       stomp.subscribe(CHANGES_CHANNEL);
+     }
+     else if (frame.headers['destination'] == '/flumotion/components/changes') {
+       changes_receive ( JSON.parse(frame.body) );
+     }
+   };
+
+   // Everything is setup. Start the connection!
+   stomp.connect(document.domain, 61613); //, 'guest', 'guest');
+});
+ </script>
+ <style>
+  .happy:before {content:url('images/mood-happy.png')}
+  .hungry:before {content:url('images/mood-hungry.png')}
+  .sleeping:before {content:url('images/mood-sleeping.png')}
+  .sad:before {content:url('images/mood-sad.png')}
+  .lost:before {content:url('images/mood-lost.png')}
+  .waking:before {content:url('images/mood-waking.png')}
+ </style>
+</head>
+
+<body>
+<h2>Flumotion</h2>
+<div id="components"></div>
+</body>
+
+</html>
