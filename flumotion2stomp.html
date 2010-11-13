@@ -11,7 +11,7 @@
  <script type="text/javascript" src="http://localhost:8000/static/protocols/stomp/stomp.js"></script>
 
  <script type="text/javascript" src="json2.js"></script>
-<script type="text/javascript" src="jquery-1.4.4.min.js"></script>
+ <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
 
  <script type="text/javascript">
 
@@ -185,7 +185,6 @@ function update_streamer_clients() {
   $('#listeners').html(total_clients);
 }
  $(document).ready(function() {
-
    // set up stomp client.
    stomp.onconnectedframe = function() {
      // Run on initial connection to STOMP (comet) server
@@ -215,6 +214,8 @@ function update_streamer_clients() {
 });
  </script>
  <style>
+  #summary {position:absolute;left:20px;top:0px;}
+  #components {position:absolute;right:20px;top:0px;}
   .happy:before {content:url('images/mood-happy.png')}
   .hungry:before {content:url('images/mood-hungry.png')}
   .sleeping:before {content:url('images/mood-sleeping.png')}
@@ -225,8 +226,8 @@ function update_streamer_clients() {
 </head>
 
 <body>
-<h2>Flumotion</h2>
 <div id="summary">
+<h2>Summary</h2>
 <div id="recordingsummary"></div>
 <div>Total listeners/watchers <div id="listeners"></div></div>
 </div>
