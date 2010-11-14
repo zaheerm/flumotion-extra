@@ -291,12 +291,14 @@ function start_selected_components() {
   $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log("starting component " + compname); message = { "component": compname, "command": "componentStart"}; stomp.send(JSON.stringify(message), COMMAND_CHANNEL); });
   $('.selected').toggleClass('unselected');
   $('.selected').toggleClass('selected');
+  $('#selectedcomponents').html('Selected components: ');
 }
 
 function stop_selected_components() {
   $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log("stopping component " + compname); message = { "component": compname, "command": "componentStop"}; stomp.send(JSON.stringify(message), COMMAND_CHANNEL); });
   $('.selected').toggleClass('unselected');
   $('.selected').toggleClass('selected');
+  $('#selectedcomponents').html('Selected components: ');
 }
 
  $(document).ready(function() {
