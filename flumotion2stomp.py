@@ -51,6 +51,7 @@ class FluToStomp:
     def __init__(self, args):
         self._components = []
         self.uistates = {}
+        self.uistates_by_name = {}
         self._translator = Translator()
         log.init()
 
@@ -161,7 +162,10 @@ class FluToStomp:
 
     def component_state_set(self, state, key, value):
         component = self.parse_component(state)
-        print "component changed %r" % (component,)
+        print "Component changed %r to %r" % (key, value)
+        if key == 'mood' and value != 0:
+           self.stop_listening_for_uistate_on_component(state.get('name'))
+
         self.stomp_client.send_changes({ "action": "change", "component": component })
 
     def flow_state_append(self, state, key, value):
@@ -174,14 +178,29 @@ class FluToStomp:
     def flow_state_remove(self, state, key, value):
         if key == 'components':
            component = value.get('name')
-           self.stomp_client.send_changes({ "action": "remove", "component": component }) 
-    
+           self.stop_listening_for_uistate_on_component(component)
+           self.stomp_client.send_changes({ "action": "remove", "component": component })
+
+    def stop_listening_for_uistate_on_component(self, component):
+        print "trying to stop listening on uistate for %r" % (component,)
+        if component in self.uistates_by_name:
+           uistate = self.uistates_by_name[component]
+           uistate.removeListener(self)
+           del self.uistates_by_name[component]
+           del self.uistates[uistate]
+
     def new_component(self, state):
         state.addListener(self, set_= self.component_state_set)
 
     @defer.inlineCallbacks
     def poll_uistate(self, component):
         state = None
+        if component in self.uistates_by_name:
+            parsed = self.parse_uistate(self.uistates_by_name[component])
+            for key in parsed:
+                self.stomp_client.send_uistate(component, key, parsed[key])
+            print "No need to add listener, already listening for uistate of %r" % (component,)
+            defer.returnValue(False)
         for c in self._components:
             if c.get('name') == component:
                state = c
@@ -193,6 +212,7 @@ class FluToStomp:
            yield d
            uistate = d.result
            self.uistates[uistate] = state.get('name')
+           self.uistates_by_name[state.get('name')] = uistate
            parsed = self.parse_uistate(uistate)
            for key in parsed:
                self.stomp_client.send_uistate(state.get('name'), key, parsed[key])

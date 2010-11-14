@@ -77,6 +77,12 @@
        $('div.flumotion-message').expander();
      }
    }
+   // do not continue if mood is not happy
+   if (value["mood"] != 0) return;
+   else listen_for_stuff(value);
+ }
+
+ function listen_for_stuff(value) {
    if (value["type"].indexOf("http-") != -1 || value["type"] == 'disk-consumer') {
       var channel_name = UISTATE_CHANNEL + "/" + value["name"];
       if (value["type"] == "disk-consumer") channel_name = channel_name + "/filename";
@@ -100,6 +106,31 @@
    }
  }
 
+ function stop_listening_for_stuff(value) {
+   var componentname = value["name"].replace(/\./g, "__");
+
+   if (value["type"].indexOf("http-") != -1 || value["type"] == 'disk-consumer') {
+      var channel_name = UISTATE_CHANNEL + "/" + value["name"];
+      if (value["type"] == "disk-consumer") {
+        channel_name = channel_name + "/filename";
+        $('#filename-' + componentname).remove();
+      }
+      else {
+         channel_name = channel_name + "/clients-current";
+         console.log("unsubscribing to " + channel_name);
+         stomp.unsubscribe(channel_name);
+         STREAMER_CLIENTS[componentname] = 0;
+         update_streamer_clients();
+      }
+   }
+   if (value["type"] == "firewire-producer" || value["type"] == "soundcard-producer") {
+     var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/volume-peak';
+     stomp.unsubscribe(channel_name);
+     $('#volumeleft-' + value["name"]).remove();
+     $('#volumeright-' + value['name']).remove();
+   }
+ }
+
  function changes_receive ( msg ) {
    console.log('received changes message', msg);
    var value = msg["component"]
@@ -108,11 +139,15 @@
      console.log("change to component " + value["name"]);
      if (value["mood"] > OVERALL_MOOD) change_overall_mood(value["mood"]);
      var mood = get_mood_string(value["mood"]);
-     console.log("mood changed to " + mood);
      var elementname = "#component-" + value["name"].replace(/\./g, "__");
      console.log("element " + $(elementname).attr("id"))
      $(elementname).attr("class", mood);
      change_overall_mood();
+     if (value["mood"] == 0) {
+        console.log(value["name"] + " went happy");
+        listen_for_stuff(value);
+     }
+     else stop_listening_for_stuff(value);
    }
    else if (msg["action"] == "add") {
      console.log("new component " + value["name"]);
@@ -131,22 +166,22 @@
 
 function uistate_receive(destination, value) {
   destsplit = destination.split('/');
-
+  var componentname = destsplit[4].replace(/\./g, "__");
   if (destsplit[5] == "filename") {
     console.log("component " + destsplit[4] + " has changed filename to " + value);
     var str = destsplit[4];
     if (value == null) str = str + " is not recording";
     else str = str + ' is recording to filename ' + value;
-    if ($("#filename-" + destsplit[4]).length == 0) {
-      $("#recordingsummary").append('<div id="filename-' + destsplit[4] + '">' + str + '</div>');
+    if ($("#filename-" + componentname).length == 0) {
+      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '</div>');
     }
     else {
-      $("#filename-" + destsplit[4]).html(str);
+      $("#filename-" + componentname).html(str);
     }
       
   }
   else if (destsplit[5] == 'clients-current') {
-    STREAMER_CLIENTS[destsplit[4]] = parseInt(value);
+    STREAMER_CLIENTS[componentname] = parseInt(value);
     update_streamer_clients();
     console.log("component " + destsplit[4] + " has clients " + value);
   }
