@@ -253,9 +253,9 @@ class FluToStomp:
         params = message.get("params", [])
         method = message.get("method", None)
         # allow only specific commands
-        if command not in ["componentCallRemote", "invokeOnComponents"]:
+        if command not in ["componentCallRemote", "invokeOnComponents", "componentStart", "componentStop"]:
             return False
-        if not component or not method:
+        if not component:
             return False
         state = None
         if command == "invokeOnComponents":
@@ -265,10 +265,22 @@ class FluToStomp:
                 if c.get('name') == component:
                     state = c
                     break
+        if command in ["componentStart", "componentStop"]:
+            need_method = False
+        else:
+            need_method = True
+        if need_method and not_method:
+            print "need method but none specified"
+            return False
         if not state:
+            print "component %s not found" % (component,)
             return False
         try:
-            d = self.model.callRemote(command, state, method)
+            print "about to run %s on %r" % (command, state)
+            if need_method:
+                d = self.model.callRemote(command, state, method)
+            else:
+                d = self.model.callRemote(command, state)
             return d
         except Exception, e:
             print "Got exception %r running %s" % (e, command)

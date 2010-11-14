@@ -284,7 +284,19 @@ function select_component(comp) {
   $('#' + comp).toggleClass("unselected"); 
   $('#' + comp).toggleClass("selected");
   $('#selectedcomponents').html('Selected components: ');
-  $.each($('.selected'), function(index, value) { $('#selectedcomponents').append(value + '<br />'); });
+  $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log('component ' + value + " name " + compname); $('#selectedcomponents').append(compname + '<br />'); });
+}
+
+function start_selected_components() {
+  $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log("starting component " + compname); message = { "component": compname, "command": "componentStart"}; stomp.send(JSON.stringify(message), COMMAND_CHANNEL); });
+  $('.selected').toggleClass('unselected');
+  $('.selected').toggleClass('selected');
+}
+
+function stop_selected_components() {
+  $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log("stopping component " + compname); message = { "component": compname, "command": "componentStop"}; stomp.send(JSON.stringify(message), COMMAND_CHANNEL); });
+  $('.selected').toggleClass('unselected');
+  $('.selected').toggleClass('selected');
 }
 
  $(document).ready(function() {
@@ -324,8 +336,8 @@ function select_component(comp) {
    stomp.connect("localhost", 61613); //, 'guest', 'guest');
    $('#startallrecordings').styledButton({'action': function() { start_all_recordings(); } });
    $('#stopallrecordings').styledButton({'action': function() { stop_all_recordings(); } });
-   $('#startcomponent').styledButton({'action': function() { console.log("Starting components"); } });
-   $('#stopcomponent').styledButton({'action': function() { console.log("Stopping components"); } });
+   $('#startcomponent').styledButton({'action': function() { start_selected_components(); } });
+   $('#stopcomponent').styledButton({'action': function() { stop_selected_components(); } });
 
 });
  </script>
