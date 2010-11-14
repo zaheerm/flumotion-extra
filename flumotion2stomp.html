@@ -13,6 +13,7 @@
  <script type="text/javascript" src="json2.js"></script>
  <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
  <script type="text/javascript" src="jquery.expander.js"></script>
+ <script type="text/javascript" src="jquery.styledButton.js"></script>
  <script type="text/javascript">
 
  var POLL_CHANNEL = '/flumotion/poll';
@@ -173,7 +174,10 @@ function uistate_receive(destination, value) {
     if (value == null) str = str + " is not recording";
     else str = str + ' is recording to filename ' + value;
     if ($("#filename-" + componentname).length == 0) {
-      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '</div>');
+      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Start Recording or Change Filename</span>&nbsp;&nbsp;<span id="stoprecord-' + componentname + '">Stop Recording</span></div>');
+      $('#startrecord-' + componentname).styledButton({'action': function() { start_recording(this); } });
+      $('#stoprecord-' + componentname).styledButton({'action': function() { stop_recording(this); } });
+
     }
     else {
       $("#filename-" + componentname).html(str);
@@ -188,6 +192,17 @@ function uistate_receive(destination, value) {
   else if (destsplit[5].indexOf('volume-') != -1) {
     draw_volume(destsplit[4], value);
   }
+}
+
+function start_recording(element) {
+  var str = element.id;
+  str = str.split('-', 2);
+  component = str[1]
+  console.log("start recording for component " + component);
+}
+
+function stop_recording(element) {
+  console.log("start recording for component " + element.id);
 }
 
 function iec_scale(db) {
@@ -268,6 +283,7 @@ function update_streamer_clients() {
   .lost:before {content:url('images/mood-lost.png')}
   .waking:before {content:url('images/mood-waking.png')}
  </style>
+ <link rel="stylesheet" href="styledButton.css" type="text/css"></link>
 </head>
 
 <body>

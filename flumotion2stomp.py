@@ -256,7 +256,7 @@ class StompClient(StompClientFactory):
         
     def recv_message(self, msg):
         print "Message received %r" % (msg,)
-        if msg["destination"] == "/flumotion/poll":
+        if msg["headers"]["destination"] == "/flumotion/poll":
             try:
                 component = msg["body"]
                 global main
@@ -264,7 +264,7 @@ class StompClient(StompClientFactory):
 
             except Exception, e:
                 print "Broken Total Request %r" % (e,)
-        elif msg["destination"] == "/flumotion/command":
+        elif msg["headers"]["destination"] == "/flumotion/command":
             pass
 
     def send_status(self):
