@@ -137,17 +137,17 @@
 
    if (msg["action"] == "change") {
      console.log("change to component " + value["name"]);
-     if (value["mood"] > OVERALL_MOOD) change_overall_mood(value["mood"]);
      var mood = get_mood_string(value["mood"]);
      var elementname = "#component-" + value["name"].replace(/\./g, "__");
-     console.log("element " + $(elementname).attr("id"))
-     $(elementname).attr("class", mood);
-     change_overall_mood();
-     if (value["mood"] == 0) {
-        console.log(value["name"] + " went happy");
-        listen_for_stuff(value);
+     if ($(elementname).attr("class") != mood) {
+       $(elementname).attr("class", mood);
+       if (value["mood"] > OVERALL_MOOD) change_overall_mood(value["mood"]);
+       if (value["mood"] == 0) {
+          console.log(value["name"] + " went happy");
+          listen_for_stuff(value);
+       }
+       else stop_listening_for_stuff(value);
      }
-     else stop_listening_for_stuff(value);
    }
    else if (msg["action"] == "add") {
      console.log("new component " + value["name"]);

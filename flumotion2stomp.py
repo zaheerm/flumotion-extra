@@ -252,16 +252,20 @@ class StompClient(StompClientFactory):
         self.timer = LoopingCall(self.send_status)
         self.timer.start(5)
         self.subscribe("/flumotion/poll")
+        self.subscribe("/flumotion/command")
         
     def recv_message(self, msg):
         print "Message received %r" % (msg,)
-        try:
-            component = msg["body"]
-            global main
-            main.poll_uistate(component)
+        if msg["destination"] == "/flumotion/poll":
+            try:
+                component = msg["body"]
+                global main
+                main.poll_uistate(component)
 
-        except Exception, e:
-            print "Broken Total Request %r" % (e,)
+            except Exception, e:
+                print "Broken Total Request %r" % (e,)
+        elif msg["destination"] == "/flumotion/command":
+            pass
 
     def send_status(self):
         global main
