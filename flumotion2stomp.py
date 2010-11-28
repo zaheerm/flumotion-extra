@@ -198,19 +198,26 @@ class FluToStomp:
         params = message.get("params", [])
         method = message.get("method", None)
         # allow only specific commands
-        if command not in ["componentCallRemote"]:
+        if command not in ["componentCallRemote", "invokeOnComponents"]:
             return False
         if not component or not method:
             return False
         state = None
-        for c in self._components:
-            if c.get('name') == component:
-                state = c
-                break
+        if command == "invokeOnComponents":
+            state = component
+        else:
+            for c in self._components:
+                if c.get('name') == component:
+                    state = c
+                    break
         if not state:
-            defer.returnValue(False)
-        d = self.model.componentCallRemote(state, method)
-        return d
+            return False
+        try:
+            d = self.model.callRemote(command, state, method)
+            return d
+        except Exception, e:
+            print "Got exception %r running %s" % (e, command)
+        return False
 
     @defer.inlineCallbacks
     def poll_uistate(self, component):

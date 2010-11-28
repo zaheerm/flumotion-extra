@@ -212,6 +212,18 @@ function stop_recording(element) {
   stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
 }
 
+function start_all_recordings() {
+  console.log("start recording for all components");
+  command = { "command" : "invokeOnComponents", "method": "changeFilename", "params": [] , "component" : "disk-consumer" };
+  stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
+}
+
+function stop_all_recordings() {
+  console.log("stop recording for all components");
+  command = { "command" : "invokeOnComponents", "method": "stopRecording", "params": [] , "component" : "disk-consumer" };
+  stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
+}
+
 function iec_scale(db) {
   var pct = 0.0
 
@@ -278,6 +290,9 @@ function update_streamer_clients() {
 
    // Everything is setup. Start the connection!
    stomp.connect(document.domain, 61613); //, 'guest', 'guest');
+   $('#startallrecordings').styledButton({'action': function() { start_all_recordings(); } });
+   $('#stopallrecordings').styledButton({'action': function() { stop_all_recordings(); } });
+
 });
  </script>
  <style>
@@ -297,7 +312,9 @@ function update_streamer_clients() {
 <div id="summary">
 <h2>Summary</h2>
 <div id="recordingsummary">
-<h3>Recordings</h3></div>
+<h3>Recordings</h3>
+<span id="startallrecordings">Start Recording/Change Filename for all</span>&nbsp;&nbsp;<span id="stopallrecordings">Stop Recording for all</span>
+</div>
 <div id="streamingsummary">
 <h3>Streaming</h3>
 <div id="listeners"></div>
