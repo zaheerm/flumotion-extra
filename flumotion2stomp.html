@@ -17,6 +17,7 @@
  <script type="text/javascript">
 
  var POLL_CHANNEL = '/flumotion/poll';
+ var COMMAND_CHANNEL = '/flumotion/command';
  var INITIAL_CHANNEL = '/flumotion/components/initial';
  var CHANGES_CHANNEL = '/flumotion/components/changes';
  var UISTATE_CHANNEL = '/flumotion/components/uistate';
@@ -171,18 +172,17 @@ function uistate_receive(destination, value) {
   if (destsplit[5] == "filename") {
     console.log("component " + destsplit[4] + " has changed filename to " + value);
     var str = destsplit[4];
-    if (value == null) str = str + " is not recording";
-    else str = str + ' is recording to filename ' + value;
+    if (value == null) str = str + ' is not recording&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Start Recording</span>';
+    else str = str + ' is recording to filename ' + value + '&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Change Filename</span>&nbsp;&nbsp;<span id="stoprecord-' + componentname + '">Stop Recording</span>';
     if ($("#filename-" + componentname).length == 0) {
-      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Start Recording or Change Filename</span>&nbsp;&nbsp;<span id="stoprecord-' + componentname + '">Stop Recording</span></div>');
-      $('#startrecord-' + componentname).styledButton({'action': function() { start_recording(this); } });
-      $('#stoprecord-' + componentname).styledButton({'action': function() { stop_recording(this); } });
-
+      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '</div>');
     }
     else {
       $("#filename-" + componentname).html(str);
     }
-      
+     $('#startrecord-' + componentname).styledButton({'action': function() { start_recording(this); } });
+     $('#stoprecord-' + componentname).styledButton({'action': function() { stop_recording(this); } });
+  
   }
   else if (destsplit[5] == 'clients-current') {
     STREAMER_CLIENTS[componentname] = parseInt(value);
@@ -196,13 +196,20 @@ function uistate_receive(destination, value) {
 
 function start_recording(element) {
   var str = element.id;
-  str = str.split('-', 2);
-  component = str[1]
+  first_dash = str.indexOf('-');
+  component = str.slice(first_dash + 1);
   console.log("start recording for component " + component);
+  command = { "command" : "componentCallRemote", "method": "changeFilename", "params": [] , "component" : component };
+  stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
 }
 
 function stop_recording(element) {
-  console.log("start recording for component " + element.id);
+  var str = element.id;
+  first_dash = str.indexOf('-');
+  component = str.slice(first_dash + 1);
+  console.log("stop recording for component " + component);
+  command = { "command" : "componentCallRemote", "method": "stopRecording", "params": [] , "component" : component };
+  stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
 }
 
 function iec_scale(db) {

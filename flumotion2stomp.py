@@ -192,6 +192,26 @@ class FluToStomp:
     def new_component(self, state):
         state.addListener(self, set_= self.component_state_set)
 
+    def run_command(self, message):
+        command = message["command"]
+        component = message.get("component", None)
+        params = message.get("params", [])
+        method = message.get("method", None)
+        # allow only specific commands
+        if command not in ["componentCallRemote"]:
+            return False
+        if not component or not method:
+            return False
+        state = None
+        for c in self._components:
+            if c.get('name') == component:
+                state = c
+                break
+        if not state:
+            defer.returnValue(False)
+        d = self.model.componentCallRemote(state, method)
+        return d
+
     @defer.inlineCallbacks
     def poll_uistate(self, component):
         state = None
@@ -265,7 +285,12 @@ class StompClient(StompClientFactory):
             except Exception, e:
                 print "Broken Total Request %r" % (e,)
         elif msg["headers"]["destination"] == "/flumotion/command":
-            pass
+            try:
+                message = json.decode(msg["body"])
+                global main
+                main.run_command(message)
+            except Exception, e:
+                print "Broken request %r" % (e,)
 
     def send_status(self):
         global main
