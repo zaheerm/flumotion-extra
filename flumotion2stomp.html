@@ -3,12 +3,12 @@
 
 <head>
  <script>document.domain=document.domain</script>
- <script type="text/javascript" src="http://localhost:8000/static/Orbited.js"></script>
+ <script type="text/javascript" src="Orbited.js"></script>
  <script>
  Orbited.settings.port = 8000;
  TCPSocket = Orbited.TCPSocket;
  </script>
- <script type="text/javascript" src="http://localhost:8000/static/protocols/stomp/stomp.js"></script>
+ <script type="text/javascript" src="stomp.js"></script>
 
  <script type="text/javascript" src="json2.js"></script>
  <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
@@ -314,7 +314,7 @@ function update_streamer_clients() {
 <h2>Summary</h2>
 <div id="recordingsummary">
 <h3>Recordings</h3>
-<span id="startallrecordings">Start Recording/Change Filename for all</span>&nbsp;&nbsp;<span id="stopallrecordings">Stop Recording for all</span>
+<span id="startallrecordings">Start/Change All</span>&nbsp;&nbsp;<span id="stopallrecordings">Stop All</span>
 </div>
 <div id="streamingsummary">
 <h3>Streaming</h3>
