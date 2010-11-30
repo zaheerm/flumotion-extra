@@ -280,6 +280,14 @@ function update_streamer_clients() {
 }
  $(document).ready(function() {
    // set up stomp client.
+   stomp.onclose = function(c) { alert('Lost Connection (Please reload), Code: ' + c);};
+   stomp.onerror = function(error) {
+        alert("Error (Please reload): " + error);
+    };
+    stomp.onerrorframe = function(frame) {
+        alert("Error (Please reload): " + frame.body);
+    };
+
    stomp.onconnectedframe = function() {
      // Run on initial connection to STOMP (comet) server
      stomp.ready = true;
