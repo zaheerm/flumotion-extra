@@ -71,7 +71,7 @@
    else if (value["type"].indexOf("pipeline-converter") != -1) section = "encoders";
    var componentname = value["name"].replace(/\./g, "__");
    var elementname = "component-" + componentname;
-   $("#" + section).append('<div id="' + elementname + '" class="component ' + mood + '">' + value["name"] + '</div>');
+   $("#" + section).append('<div id="' + elementname + '" class="unselected component ' + mood + '" onclick="select_component(' + "'" + elementname + "'" +');">' + value["name"] + '</div>');
    change_overall_mood();
    if (value["messages"].length > 0) {
      for(i=0;i<value["messages"].length;i++) {
@@ -279,6 +279,14 @@ function update_streamer_clients() {
   }
   $('#listeners').html("Total clients: " + total_clients);
 }
+
+function select_component(comp) { 
+  $('#' + comp).toggleClass("unselected"); 
+  $('#' + comp).toggleClass("selected");
+  $('#selectedcomponents').html('Selected components: ');
+  $.each($('.selected'), function(index, value) { $('#selectedcomponents').append(comp + '<br />'); });
+}
+
  $(document).ready(function() {
    // set up stomp client.
    stomp.onclose = function(c) { alert('Lost Connection (Please reload), Code: ' + c);};
@@ -316,6 +324,8 @@ function update_streamer_clients() {
    stomp.connect("localhost", 61613); //, 'guest', 'guest');
    $('#startallrecordings').styledButton({'action': function() { start_all_recordings(); } });
    $('#stopallrecordings').styledButton({'action': function() { stop_all_recordings(); } });
+   $('#startcomponent').styledButton({'action': function() { console.log("Starting components"); } });
+   $('#stopcomponent').styledButton({'action': function() { console.log("Stopping components"); } });
 
 });
  </script>
@@ -328,6 +338,10 @@ function update_streamer_clients() {
   .sad:before {content:url('images/mood-sad.png')}
   .lost:before {content:url('images/mood-lost.png')}
   .waking:before {content:url('images/mood-waking.png')}
+  .unselected {color:black;}
+  .unselected:hover {cursor:pointer; color: white; background-color:red;}
+  .selected {color:red;}
+  .selected:hover {cursor:pointer; color: white; background-color:blue;}
  </style>
  <link rel="stylesheet" href="styledButton.css" type="text/css"></link>
 </head>
@@ -351,6 +365,7 @@ function update_streamer_clients() {
 </div>
 </div>
 <span id="components">
+<div id="selectedcomponents">Selected components:</div><br /><span id="startcomponent">Start</span>&nbsp;&nbsp;<span id="stopcomponent">Stop</span>
 <h3>Producers</h3>
 <div id="producers"></div>
 <h3>Encoders and Muxers</h3>
