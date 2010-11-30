@@ -77,7 +77,7 @@
      for(i=0;i<value["messages"].length;i++) {
        m = value["messages"][i];
        $('#messages').append('<div class="flumotion-message" id="message-' + componentname + '">On component <b>' + value["name"] + "</b>:" + m["text"] + "</div>");
-       $('div.flumotion-message').expander();
+       $('#message-' + componentname).expander();
      }
    }
    // do not continue if mood is not happy
@@ -145,6 +145,7 @@
      STREAMER_CLIENTS = {};
      update_streamer_clients();
      $('.volume').remove();
+     $('.flumotion-message').remove();
      $("#components").attr('class', "lost");
    }
    else if (msg["action"] == "connected") {
