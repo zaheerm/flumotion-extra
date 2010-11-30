@@ -284,7 +284,7 @@ function select_component(comp) {
   $('#' + comp).toggleClass("unselected"); 
   $('#' + comp).toggleClass("selected");
   $('#selectedcomponents').html('Selected components: ');
-  $.each($('.selected'), function(index, value) { $('#selectedcomponents').append(comp + '<br />'); });
+  $.each($('.selected'), function(index, value) { $('#selectedcomponents').append(value + '<br />'); });
 }
 
  $(document).ready(function() {
