@@ -290,7 +290,7 @@ function update_streamer_clients() {
    };
 
    // Everything is setup. Start the connection!
-   stomp.connect(document.domain, 61613); //, 'guest', 'guest');
+   stomp.connect("localhost", 61613); //, 'guest', 'guest');
    $('#startallrecordings').styledButton({'action': function() { start_all_recordings(); } });
    $('#stopallrecordings').styledButton({'action': function() { stop_all_recordings(); } });
 
