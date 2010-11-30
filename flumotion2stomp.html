@@ -24,7 +24,7 @@
  var UISTATE_CHANNEL = '/flumotion/components/uistate';
  var OVERALL_MOOD = -1;
  
- var STREAMER_CLIENTS = Array();
+ var STREAMER_CLIENTS = {};
  var stomp = new STOMPClient();
  var GREEN = "#0f0";
  var RED = "#f00";
@@ -71,7 +71,7 @@
    else if (value["type"].indexOf("pipeline-converter") != -1) section = "encoders";
    var componentname = value["name"].replace(/\./g, "__");
    var elementname = "component-" + componentname;
-   $("#" + section).append('<div id="' + elementname + '" class="' + mood + '">' + value["name"] + '</div>');
+   $("#" + section).append('<div id="' + elementname + '" class="component ' + mood + '">' + value["name"] + '</div>');
    change_overall_mood();
    if (value["messages"].length > 0) {
      for(i=0;i<value["messages"].length;i++) {
@@ -94,11 +94,11 @@
       stomp.subscribe(channel_name);
       stomp.send(value["name"], POLL_CHANNEL);
    }
-   if (value["type"] == "firewire-producer" || value["type"] == "soundcard-producer") {
+   if (value["type"] == "firewire-producer" || value["type"] == "soundcard-producer" || value["type"] == "audiotest-producer") {
      var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/volume-peak';
      stomp.subscribe(channel_name);
      stomp.send(value["name"], POLL_CHANNEL);
-     $('#input').append('<canvas id="volumeleft-' + value["name"] + '" width="250" height="30"></canvas><canvas id="volumeright-' + value["name"] + '" width="250" height="30"></canvas>')
+     $('#input').append('<canvas class="volume" id="volumeleft-' + value["name"] + '" width="250" height="30"></canvas><canvas class="volume" id="volumeright-' + value["name"] + '" width="250" height="30"></canvas>')
      ctx = document.getElementById('volumeleft-' + value['name']).getContext("2d");
      ctx.fillStyle = '#000';
      ctx.fillRect(0, 0, 250, 30);
@@ -138,12 +138,26 @@
    console.log('received changes message', msg);
    var value = msg["component"]
 
-   if (msg["action"] == "change") {
+   if (msg["action"] == "disconnected") {
+     console.log("disconnected from manager")
+     $('.component').remove();
+     $('.filename').remove();
+     STREAMER_CLIENTS = {};
+     update_streamer_clients();
+     $('.volume').remove();
+     $("#components").attr('class', "lost");
+   }
+   else if (msg["action"] == "connected") {
+     console.log("connected to manager")
+     stomp.subscribe(INITIAL_CHANNEL);
+   }
+   else if (msg["action"] == "change") {
      console.log("change to component " + value["name"]);
      var mood = get_mood_string(value["mood"]);
      var elementname = "#component-" + value["name"].replace(/\./g, "__");
      if ($(elementname).attr("class") != mood) {
        $(elementname).attr("class", mood);
+       $(elementname).addClass("component");
        if (value["mood"] > OVERALL_MOOD) change_overall_mood(value["mood"]);
        if (value["mood"] == 0) {
           console.log(value["name"] + " went happy");
@@ -176,7 +190,7 @@ function uistate_receive(destination, value) {
     if (value == null) str = str + ' is not recording&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Start Recording</span>';
     else str = str + ' is recording to filename ' + value + '&nbsp;&nbsp;<span id="startrecord-' + componentname + '">Change Filename</span>&nbsp;&nbsp;<span id="stoprecord-' + componentname + '">Stop Recording</span>';
     if ($("#filename-" + componentname).length == 0) {
-      $("#recordingsummary").append('<div id="filename-' + componentname + '">' + str + '</div>');
+      $("#recordingsummary").append('<div class="filename" id="filename-' + componentname + '">' + str + '</div>');
     }
     else {
       $("#filename-" + componentname).html(str);

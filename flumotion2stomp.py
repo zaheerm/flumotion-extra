@@ -86,6 +86,12 @@ class FluToStomp:
         connection = connections.parsePBConnectionInfo(options.manager,
                                                        not options.no_ssl)
         self.model = model = AdminModel()
+        self.stomp_client = StompClient()
+        reactor.connectTCP("localhost", int(self.options.stomp), self.stomp_client)
+        self.model.connect('connected', self._connected)
+        self.model.connect('disconnected', self._disconnected)
+        self.model.connect('update', self._update)
+
         d = model.connectToManager(connection)
 
         def failed(failure):
@@ -101,29 +107,58 @@ class FluToStomp:
 
         d.addErrback(failed)
         d.addErrback(lambda x: reactor.stop())
-        d.addCallback(self.manager_connected)
+        #d.addCallback(self.manager_connected)
+
+    @defer.inlineCallbacks
+    def _connected(self, admin):
+        d = self.manager_connected(admin)
+        yield d
+        self.stomp_client.send_changes({"action": "connected"})
+
+    def _disconnected(self, admin):
+        flows = self.planet.get('flows')
+        flow = flows[0]
+        for f in flows:
+            if f.get('name') == 'default':
+                flow = f
+                break
+        flow.removeListener(self)
+        self.planet = None
+        for uistate in self.uistates:
+            uistate.removeListener(self)
+        self.uistates = {}
+        self.uistates_by_name = {}
+        for c in self._components:
+            c.removeListener(self)
+        self._components = []
+        self.stomp_client.stop_statuses()
+        self.stomp_client.send_changes({"action": "disconnected"})
+
+    def _update(self, admin):
+        self.stomp_client.send_changes({"action": "update"})
 
     @defer.inlineCallbacks
     def manager_connected(self, model):
         try:
+
             psd = model.callRemote('getPlanetState')
             yield psd
             planet = psd.result
             self.planet = planet
             flows = planet.get('flows')
-            flow = flows[0]
-            for f in flows:
-               if f.get('name') == 'default':
-                  flow = f
-                  break
-            self._components = flow.get('components')
-            self.stomp_client = StompClient()
-            reactor.connectTCP("localhost", int(self.options.stomp), self.stomp_client)
-
-            flow.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
-            for c in self._components:
-                self.new_component(c)
+            if flows:
+                flow = flows[0]
+                for f in flows:
+                    if f.get('name') == 'default':
+                        self.default_flow = flow = f
+                        break
+                self._components = flow.get('components')
             
+                flow.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
+                for c in self._components:
+                    self.new_component(c)
+            self.planet.addListener(self, append=self.planet_state_append, remove=self.planet_state_remove)
+            self.stomp_client.restart_statuses()            
         except Exception, e:
             print log.getExceptionMessage(e)
 
@@ -167,6 +202,26 @@ class FluToStomp:
            self.stop_listening_for_uistate_on_component(state.get('name'))
 
         self.stomp_client.send_changes({ "action": "change", "component": component })
+
+    def planet_state_append(self, state, key, value):
+        if key == 'flows':
+            if value.get('name') == 'default':
+                self._components = value.get('components')
+                for c in self._components:
+                    component = self.parse_component(c)
+                    self.new_component(c)
+                    self.stomp_client.send_changes({ "action": "add", "component": component })
+
+                value.addListener(self, append=self.flow_state_append, remove=self.flow_state_remove)
+                self.default_flow = value
+
+    def planet_state_remove(self, state, key, value):
+        if key == 'flows':
+            if value.get('name') == 'default':
+                for c in self._components:
+                    self.stop_listening_for_uistate_on_component(c)
+                    self.stomp_client.send_changes({ "action": "remove", "component": c })
+                    self._components = []
 
     def flow_state_append(self, state, key, value):
         if key == 'components':
@@ -276,11 +331,19 @@ class StompClient(StompClientFactory):
     status = {}
     def recv_connected(self, msg):
         print "Connected with stomp"
-        self.timer = LoopingCall(self.send_status)
-        self.timer.start(5)
+        self.timer = None
+        
+    def stop_statuses(self):
+        self.timer.stop()
+        self.timer = None
+
+    def restart_statuses(self):
         self.subscribe("/flumotion/poll")
         self.subscribe("/flumotion/command")
-        
+
+        self.timer = LoopingCall(self.send_status)
+        self.timer.start(5)
+
     def recv_message(self, msg):
         print "Message received %r" % (msg,)
         if msg["headers"]["destination"] == "/flumotion/poll":
