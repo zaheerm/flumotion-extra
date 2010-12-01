@@ -269,7 +269,7 @@ class FluToStomp:
             need_method = False
         else:
             need_method = True
-        if need_method and not_method:
+        if need_method and not method:
             print "need method but none specified"
             return False
         if not state:
