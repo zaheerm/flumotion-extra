@@ -278,9 +278,9 @@ class FluToStomp:
         try:
             print "about to run %s on %r" % (command, state)
             if need_method:
-                d = self.model.callRemote(command, state, method)
+                d = self.model.callRemote(command, state, method, *params)
             else:
-                d = self.model.callRemote(command, state)
+                d = self.model.callRemote(command, state, *params)
             return d
         except Exception, e:
             print "Got exception %r running %s" % (e, command)

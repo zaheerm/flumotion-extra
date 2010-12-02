@@ -216,10 +216,13 @@ function uistate_receive(destination, value) {
 
 function start_recording(element) {
   var str = element.id;
+  var params = [];
   first_dash = str.indexOf('-');
   component = str.slice(first_dash + 1);
-  console.log("start recording for component " + component);
-  command = { "command" : "componentCallRemote", "method": "changeFilename", "params": [] , "component" : component };
+  filename = $('#filenameentry-' + component).attr('value');
+  console.log("start recording for component " + component + " with filename " + filename);
+  if (filename != '') params[0] = filename;
+  command = { "command" : "componentCallRemote", "method": "changeFilename", "params": params , "component" : component };
   stomp.send(JSON.stringify(command), COMMAND_CHANNEL);
 }
 
