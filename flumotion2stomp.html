@@ -3,6 +3,7 @@
 
 <head>
  <script>document.domain=document.domain</script>
+ <link type="text/css" href="css/ui-lightness/jquery-ui-1.8.6.custom.css" rel="stylesheet" />
  <script type="text/javascript" src="Orbited.js"></script>
  <script>
  Orbited.settings.port = 8000;
@@ -12,6 +13,7 @@
 
  <script type="text/javascript" src="json2.js"></script>
  <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
+ <script type="text/javascript" src="js/jquery-ui-1.8.6.custom.min.js"></script>
  <script type="text/javascript" src="jquery.expander.js"></script>
  <script type="text/javascript" src="jquery.styledButton.js"></script>
  <script type="text/javascript" src="firebugx.js"></script>
@@ -287,8 +289,13 @@ function update_streamer_clients() {
   $('#listeners').html("Total clients: " + total_clients);
 }
 
-function select_component(comp) { 
-  $('#' + comp).removeClass("unselected").addClass("selected"); 
+function select_component(comp) {
+  if ($('#' + comp).hasClass("unselected")) {
+    $('#' + comp).removeClass("unselected").addClass("selected"); 
+  }
+  else {
+    $('#' + comp).removeClass("selected").addClass("unselected"); 
+  }
   $('#selectedcomponents').html('Selected components: ');
   $.each($('.selected'), function(index, value) { compname = value.childNodes[0].textContent; console.log('component ' + value + " name " + compname); $('#selectedcomponents').append(compname + '<br />'); });
 }
@@ -347,12 +354,22 @@ function stop_selected_components() {
    $('#stopallrecordings').styledButton({'action': function() { stop_all_recordings(); } });
    $('#startcomponent').styledButton({'action': function() { start_selected_components(); } });
    $('#stopcomponent').styledButton({'action': function() { stop_selected_components(); } });
-
-});
+   $('#components').draggable({ handle: "#selectedcomponents" });
+   //$('#allcomponents').accordion({fillSpace: true, autoHeight: false, clearStyle: true });
+   $('#allcomponents').tabs();
+   $('#allcomponents').resizable();
+//{ minHeight: 400, resize: function() { $('#allcomponents').accordion( "resize" ); }});
+   });
  </script>
  <style>
+  #allcomponents {height:500px;}
+  #allcomponents span {overflow:scroll;}
   #summary {position:absolute;left:20px;top:0px;}
-  #components {position:absolute;right:20px;top:0px;}
+  #components {position:absolute;right:20px;top:0px;padding:10px;
+               width:700px;height:700px;
+               -moz-border-radius:20px;-webkit-border-radius: 20px;
+               border-radius: 20px; background-color: #EAf0E7;font-size:0.85em;}
+  #selectedcomponents { cursor: move; }
   .happy:before {content:url('images/mood-happy.png')}
   .hungry:before {content:url('images/mood-hungry.png')}
   .sleeping:before {content:url('images/mood-sleeping.png')}
@@ -363,12 +380,13 @@ function stop_selected_components() {
   .unselected:hover {cursor:pointer; color: white; background-color:red;}
   .selected {color:red;}
   .selected:hover {cursor:pointer; color: white; background-color:blue;}
+  .rounded-corners {-moz-border-radius: 20px; -webkit-border-radius: 20px; border-radius: 20px; background-color: #F0EAE7; }
  </style>
  <link rel="stylesheet" href="styledButton.css" type="text/css"></link>
 </head>
 
 <body>
-<div id="summary">
+<div id="summary" class="rounded-corners">
 <h2>Summary</h2>
 <div id="recordingsummary">
 <h3>Recordings</h3>
@@ -385,18 +403,22 @@ function stop_selected_components() {
 <h2>Messages</h2>
 </div>
 </div>
-<span id="components">
+<span id="components" class="ui-widget-content">
 <div id="selectedcomponents">Selected components:</div><br /><span id="startcomponent">Start</span>&nbsp;&nbsp;<span id="stopcomponent">Stop</span>
-<h3>Producers</h3>
-<div id="producers"></div>
-<h3>Encoders and Muxers</h3>
-<div id="encoders"></div>
-<h3>Streamers</h3>
-<div id="streamers"></div>
-<h3>Recording</h3>
-<div id="diskers"></div>
-<h3>Miscellaneous</h3>
-<div id="misc"></div>
+<div id="allcomponents">
+<ul>
+<li><a href="#producers">Producers</a></li>
+<li><a href="#encoders">Encoders and Muxers</a></li>
+<li><a href="#streamers">Streamers</a></li>
+<li><a href="#diskers">Recording</a></li>
+<li><a href="#misc">Miscellaneous</a></li>
+</ul>
+<span id="producers"></span>
+<span id="encoders"></span>
+<span id="streamers"></span>
+<span id="diskers"></span>
+<spab id="misc"></span>
+</div>
 </span>
 </body>
 
