@@ -109,6 +109,11 @@
      ctx.fillRect(0, 0, 250, 30);
 
    }
+   if (value["type"].indexOf("consumer") == -1 && value["type"].indexOf("streamer") == -1) {
+     var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/feeders';
+     stomp.subscribe(channel_name);
+     stomp.send(value["name"], POLL_CHANNEL);
+   }
  }
 
  function stop_listening_for_stuff(value) {
@@ -133,6 +138,11 @@
      stomp.unsubscribe(channel_name);
      $('#volumeleft-' + value["name"]).remove();
      $('#volumeright-' + value['name']).remove();
+   }
+   if (value["type"].indexOf("consumer") == -1 && value["type"].indexOf("streamer") == -1) {
+     var channel_name = UISTATE_CHANNEL + "/" + value["name"] + '/feeders';
+     stomp.unsubscribe(channel_name);
+     stomp.send(value["name"], POLL_CHANNEL);
    }
  }
 
@@ -213,6 +223,18 @@ function uistate_receive(destination, value) {
   }
   else if (destsplit[5].indexOf('volume-') != -1) {
     draw_volume(destsplit[4], value);
+  }
+  else if (destsplit[5] == 'feeders') {
+    for (var index in value) {
+       for (var field in value[index]) {
+           if (field == "clients") {
+               for (var client in value[index][field]) {
+                   $("#bufferdrop-" + destsplit[4] + "-" + value[index][field][client]["client-id"]).remove();
+                   $("#dropped-buffers").append('<div id="bufferdrop-' + destsplit[4] + "-" + value[index][field][client]["client-id"] + '">Buffers dropped for ' + destsplit[4] + ' -> ' +  value[index][field][client]["client-id"] + ' current: ' + value[index][field][client]["buffers-dropped-current"] + ' total: ' + value[index][field][client]["buffers-dropped-total"]);
+               }
+           }
+       }
+    }
   }
 }
 
@@ -398,6 +420,9 @@ function stop_selected_components() {
 </div>
 <div id="input">
 <h3>Input</h3>
+</div>
+<div id="dropped-buffers">
+<h2>Dropped Buffers</h2>
 </div>
 <div id="messages">
 <h2>Messages</h2>
