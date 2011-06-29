@@ -1,0 +1,69 @@
+
+
+Flumotion web provides a UI for administrating flumotion servers ike the
+flumotion-admin but on the web.
+
+You need the following dependencies to run the web interface;
+  * flumotion
+  * orbited
+  * stompclient
+
+
+Set Up
+========================================================================
+This section assumes you have a working flumotion setup. If not please use
+setup flumotion first.
+
+Once set up you'll have a chain which lookes like the below;
+
+    flumotion-manager
+           /\ 
+           ||
+          7531 
+           ||
+           \/
+     flumotion2stomp.py
+           /\  
+           ||
+          61613 
+           ||
+           \/
+        orbited
+           /\ 
+           ||
+          8080 
+           ||
+           \/
+      web browser
+
+
+Step 1 - Setting up orbited
+---------------------------------------
+First we need to start a local orbited server which. orbited will listen on
+both port 8000 and port 61613 and translate between them.
+
+You can use the provided orbited.cfg file and start the server using:
+
+ # easy_install orbited
+ # orbited --config orbited.cfg
+
+
+Step 2 - Setting up flumotion2stomp
+---------------------------------------
+Next we need to start up the flumotion2stomp.py program.
+ 
+ # python flumotion2stomp.py -m user@localhost -s 61613
+
+
+Step 3 - Serving the static files
+---------------------------------------
+
+You'll also need a web server to serve the HTML/Javascript/etc files. I'm using
+Apache because its installed by default.
+
+
+Step 4 - Connect to the static web server
+---------------------------------------
+
+Use a modern web browser, go to your static server.
+
